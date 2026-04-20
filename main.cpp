@@ -175,6 +175,7 @@ unsigned long timeStart = 0;
 unsigned long lastConnect = 0;
 unsigned long lastTouchCheck = 0;
 const int touchCheckInterval = 10;
+uint16_t scrollOffset = 0;
 
 //useful funcs
 #include <cstdint>
@@ -254,11 +255,17 @@ void writeData16(uint16_t data){
 //drawing
 void setWindow(uint16_t x0,uint16_t y0,uint16_t x1,uint16_t y1)
 {
-  writeCommand(CMD_CASET);
-  writeData16(x0); writeData16(x1);
-  writeCommand(CMD_PASET);
-  writeData16(y0); writeData16(y1);
-  writeCommand(CMD_RAMWR);
+  if(y0 != 0 || y1 != 239){
+    y0 = y0 + scrollOffset;
+    y1 = y1+ scrollOffset;
+  }
+  //if(x0>=0 && x1<320 && y0>=0 && y1<240){
+    writeCommand(CMD_CASET);
+    writeData16(x0); writeData16(x1);
+    writeCommand(CMD_PASET);
+    writeData16(y0); writeData16(y1);
+    writeCommand(CMD_RAMWR);
+  //}
 }
 void initDisplay()
 {
@@ -396,12 +403,13 @@ Vector3 pollTouch()
   //drawPixel(x, y, 0xFFFF);
   Vector3 touch;
   touch.x=x;
-  touch.y=y;
+  touch.y=y-scrollOffset;
   touch.z=3000;
   return touch;
 }
 //physics engine
 typedef struct{
+  String tag;
   Vector2 pos;
   Vector2 vel;
   float radius;
@@ -410,6 +418,7 @@ typedef struct{
 }physicsObj;
 
 physicsObj physicsObjs [] = {};
+uint8_t physicsObjSize=0;
 //os built ins
 void goSleep()
 {
@@ -577,11 +586,13 @@ void drawingAppLoop()
 void snookerAppInit()
 {
   clearScreen(apps[appIndex].themeColor);
-  drawCircle(100,100, 7, 0xFFFF);
+  //make the holes. maybe also physics objects with callback function and no
+  drawCircle(4,4,12, 0x0000);
+  drawCircle(280,120, 7, 0xFFFF);
 }
 void snookerAppLoop()
 {
-  delay(100);
+  //just organize touching and hitting. leave ball handling to physics funtions + sprite function and  callbacks that change game parameters.
 }
 //detailed weather data
 uint32_t weatherDataRetrievalInterval = 100000;
@@ -673,6 +684,8 @@ void loop()
     //open app
     //clean last app
     clearButtons();
+    //go to start of page
+    scrollOffset = 0;
     //initialize
     apps[appIndex].Init();
     //confirm init to avoid multi-init
